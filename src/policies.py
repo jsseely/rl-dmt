@@ -2,7 +2,7 @@ import gymnasium as gym
 import numpy as np
 
 
-class HardCodedAgent:
+class BaseAgent:
     def __init__(self, env, gamma=0.95):
         self.env = env
         self.gamma = gamma
@@ -67,3 +67,52 @@ class HardCodedAgent:
                     max_value = value
                     best_action = action
             self.policy[state] = best_action
+
+
+class MonteCarloAgent:
+    def __init__(self, env, gamma=0.95):
+        self.env = env
+        self.gamma = gamma
+        self.policy = np.random.choice(self.env.action_space.n, self.env.state_space.n)
+        self.V = np.zeros(self.env.state_space.n)
+        self.returns = {s: [] for s in range(self.env.state_space.n)}
+
+    def select_action(self, state):
+        # Follow the current policy
+        return self.policy[state]
+
+    def generate_episode(self):
+        episode = []
+        state = self.env.reset()
+        done = False
+        while not done:
+            action = self.select_action(state)
+            next_state, reward, done, _, _ = self.env.step(action)
+            episode.append((state, action, reward))
+            state = next_state
+        return episode
+
+    def evaluate_policy(self, num_episodes=1000):
+        for _ in range(num_episodes):
+            episode = self.generate_episode()
+            G = 0
+            for t in reversed(range(len(episode))):
+                state, _, reward = episode[t]
+                G = self.gamma * G + reward
+                # Check if the state is visited for the first time in this episode
+                if state not in [x[0] for x in episode[:t]]:
+                    self.returns[state].append(G)
+                    self.V[state] = np.mean(self.returns[state])
+
+    def improve_policy(self):
+        for state in range(self.env.state_space.n):
+            action_values = []
+            for action in range(self.env.action_space.n):
+                next_state, reward = self.env.get_next_state_and_reward(state, action)
+                action_value = reward + self.gamma * self.V[next_state]
+                action_values.append(action_value)
+            self.policy[state] = np.argmax(action_values)
+
+    def train(self, num_episodes=1000):
+        self.evaluate_policy(num_episodes)
+        self.improve_policy()
