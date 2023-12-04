@@ -152,7 +152,8 @@ class MazeEnv(gym.Env):
     def reset(self, seed=None):
         super().reset(seed=seed)
         self._agent_location = (1, 1)
-        return self._agent_location
+        self._agent_state = self._grid_to_state[self._agent_location]
+        return self._agent_state
 
     def get_next_state_and_reward(self, state, action):
         if state in self.terminal_states:
@@ -170,11 +171,11 @@ class MazeEnv(gym.Env):
         return next_state, reward
 
     def step(self, action):
-        self._agent_location, reward = self.get_next_state_and_reward(
-            self._agent_location, action
+        self._agent_state, reward = self.get_next_state_and_reward(
+            self._agent_state, action
         )
-        done = self._agent_location in self.terminal_states
-        return self._agent_location, reward, done, False, {}
+        done = self._agent_state in self.terminal_states
+        return self._agent_state, reward, done, False, {}
 
     def render(self):
         """A simple function to print the state of the environment, given the agent's location."""
