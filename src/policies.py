@@ -223,28 +223,32 @@ class QLearningAgent:
         plt.show()
 
     def plot_best_action_q_values(self):
+        grid_size = max([y for x in self.env._grid_to_state.keys() for y in x])
+
         best_actions = np.argmax(self.q_table, axis=1)
         best_q_values = np.max(self.q_table, axis=1)
 
-        best_q_value_grid = np.full((8, 8), np.nan)
+        best_q_value_grid = np.full((grid_size + 1, grid_size + 1), np.nan)
         action_symbols = ["↑", "→", "↓", "←"]  # Flipped up and down
 
         for state in range(self.env.state_space.n):
             x, y = self.env._state_to_grid[state]
-            best_q_value_grid[7 - y, x] = best_q_values[state]  # Flipping the y-axis
+            best_q_value_grid[grid_size - y, x] = best_q_values[
+                state
+            ]  # Flipping the y-axis
 
         plt.figure(figsize=(8, 8))
         plt.imshow(
             best_q_value_grid, cmap="Spectral", interpolation="nearest", aspect="equal"
         )
-        for y in range(8):
-            for x in range(8):
+        for y in range(grid_size + 1):
+            for x in range(grid_size + 1):
                 if not np.isnan(best_q_value_grid[y, x]):
                     plt.text(
                         x,
                         y,
                         action_symbols[
-                            best_actions[self.env._grid_to_state[(x, 7 - y)]]
+                            best_actions[self.env._grid_to_state[(x, grid_size - y)]]
                         ],
                         ha="center",
                         va="center",
@@ -252,10 +256,16 @@ class QLearningAgent:
                     )  # Adjust for flipped y-axis
 
                     # Display q-values at the top, right, bottom, and left of each cell
-                    q_up = self.q_table[self.env._grid_to_state[(x, 7 - y)], 0]
-                    q_right = self.q_table[self.env._grid_to_state[(x, 7 - y)], 1]
-                    q_down = self.q_table[self.env._grid_to_state[(x, 7 - y)], 2]
-                    q_left = self.q_table[self.env._grid_to_state[(x, 7 - y)], 3]
+                    q_up = self.q_table[self.env._grid_to_state[(x, grid_size - y)], 0]
+                    q_right = self.q_table[
+                        self.env._grid_to_state[(x, grid_size - y)], 1
+                    ]
+                    q_down = self.q_table[
+                        self.env._grid_to_state[(x, grid_size - y)], 2
+                    ]
+                    q_left = self.q_table[
+                        self.env._grid_to_state[(x, grid_size - y)], 3
+                    ]
 
                     plt.text(
                         x,
