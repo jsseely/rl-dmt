@@ -128,6 +128,28 @@ class MazeEnv(gym.Env):
             "01001110",
         ][::-1]
 
+        self.maze = [
+            "G111111G",
+            "00010001",
+            "01110001",
+            "01011111",
+            "11110101",
+            "11110101",
+            "11111111",
+            "S111110G",
+        ][::-1]
+
+        self.maze = [
+            "G111111G",
+            "00010001",
+            "01110001",
+            "01011111",
+            "11110101",
+            "11110101",
+            "11111111",
+            "S111110G",
+        ][::-1]
+
         self.action_space = gym.spaces.Discrete(4)  # Actions: 0, 1, 2, 3
         self._agent_location = None
 
@@ -142,7 +164,16 @@ class MazeEnv(gym.Env):
             zip(self._state_to_grid.values(), self._state_to_grid.keys())
         )
 
-        self.terminal_grids = [(6, 7)]
+        self.terminal_grids = []
+        self.start_grid = None
+
+        for y in range(len(self.maze)):
+            for x in range(len(self.maze[0])):
+                if self.maze[y][x] == "G":
+                    self.terminal_grids.append((x, y))
+                elif self.maze[y][x] == "S":
+                    self.start_grid = (x, y)
+
         self.terminal_states = [
             self._grid_to_state[grid] for grid in self.terminal_grids
         ]
@@ -151,7 +182,7 @@ class MazeEnv(gym.Env):
 
     def reset(self, seed=None):
         super().reset(seed=seed)
-        self._agent_location = (1, 1)
+        self._agent_location = self.start_grid
         self._agent_state = self._grid_to_state[self._agent_location]
         return self._agent_state
 
@@ -167,7 +198,7 @@ class MazeEnv(gym.Env):
         else:
             next_state = state  # Bump into wall or out of bounds, stay in current state
 
-        reward = -1
+        reward = -1 + 1e-6 * state  # arbitrary symmetry breaking to ensure morse fns
         return next_state, reward
 
     def step(self, action):
