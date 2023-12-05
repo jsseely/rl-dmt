@@ -233,10 +233,13 @@ class QLearningAgent:
             x, y = self.env._state_to_grid[state]
             best_q_value_grid[7 - y, x] = best_q_values[state]  # Flipping the y-axis
 
-        plt.imshow(best_q_value_grid, cmap="Spectral", interpolation="nearest")
+        plt.figure(figsize=(8, 8))
+        plt.imshow(
+            best_q_value_grid, cmap="Spectral", interpolation="nearest", aspect="equal"
+        )
         for y in range(8):
             for x in range(8):
-                if not np.ian(best_q_value_grid[y, x]):
+                if not np.isnan(best_q_value_grid[y, x]):
                     plt.text(
                         x,
                         y,
@@ -247,6 +250,50 @@ class QLearningAgent:
                         va="center",
                         color="black",
                     )  # Adjust for flipped y-axis
+
+                    # Display q-values at the top, right, bottom, and left of each cell
+                    q_up = self.q_table[self.env._grid_to_state[(x, 7 - y)], 0]
+                    q_right = self.q_table[self.env._grid_to_state[(x, 7 - y)], 1]
+                    q_down = self.q_table[self.env._grid_to_state[(x, 7 - y)], 2]
+                    q_left = self.q_table[self.env._grid_to_state[(x, 7 - y)], 3]
+
+                    plt.text(
+                        x,
+                        y - 0.3,
+                        f"{q_up:.0f}",
+                        ha="center",
+                        va="center",
+                        color="black",
+                        fontsize=7,
+                    )
+                    plt.text(
+                        x + 0.3,
+                        y,
+                        f"{q_right:.0f}",
+                        ha="center",
+                        va="center",
+                        color="black",
+                        fontsize=7,
+                    )
+                    plt.text(
+                        x,
+                        y + 0.3,
+                        f"{q_down:.0f}",
+                        ha="center",
+                        va="center",
+                        color="black",
+                        fontsize=7,
+                    )
+                    plt.text(
+                        x - 0.3,
+                        y,
+                        f"{q_left:.0f}",
+                        ha="center",
+                        va="center",
+                        color="black",
+                        fontsize=7,
+                    )
+
         plt.colorbar()
         plt.title("Best Q-value and Corresponding Action per State")
         plt.show()
