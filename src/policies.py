@@ -120,10 +120,6 @@ class MonteCarloAgent:
 
 
 class QLearningAgent:
-    """
-    Q-learning agent for environments with discrete state and action spaces.
-    """
-
     def __init__(self, env, gamma=0.95, alpha=0.1, epsilon=1.0, epsilon_decay=0.995):
         self.env = env
         self.gamma = gamma

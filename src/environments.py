@@ -140,7 +140,7 @@ class MazeEnv(gym.Env):
         ][::-1]
 
         self.maze = [
-            "11101111100G",
+            "11101111111G",
             "101010101001",
             "101010101001",
             "101010101001",
@@ -151,8 +151,8 @@ class MazeEnv(gym.Env):
             "101010101001",
             "101010101111",
             "101010101001",
-            "S01110111111",
-        ]
+            "S0111011G111",
+        ][::-1]
 
         self.action_space = gym.spaces.Discrete(4)  # Actions: 0, 1, 2, 3
         self._agent_location = None
