@@ -1,5 +1,6 @@
 import networkx as nx
 import numpy as np
+import numpy as np
 import matplotlib.pyplot as plt
 
 
@@ -48,9 +49,9 @@ def classify_simplices(G):
     regular_edges = []
 
     # Function to classify nodes
-    for node, data in G.nodes(data=True):
-        node_value = -data["node_value"]  # take negative of value fn to get morse fn
-        edges = G.edges(node, data=True)
+    for node in G.nodes(data=True):
+        node_value = -node[1]["node_value"]  # take negative of value fn to get morse fn
+        edges = G.edges(node[0], data=True)
         exception_count = sum(
             -edge_data["edge_value"] <= node_value for _, _, edge_data in edges
         )  # take negative of edge value to get morse fn
@@ -84,6 +85,7 @@ def classify_simplices(G):
 
 def visualize_graph(G, env, critical_nodes, critical_edges):
     # Get node positions from env._state_to_grid
+    nodes_inds = [c[0] for c in critical_nodes]
     pos = {state: env._state_to_grid[state] for state in G.nodes}
 
     # Create a figure and axis
@@ -94,7 +96,7 @@ def visualize_graph(G, env, critical_nodes, critical_edges):
 
     # Highlight critical nodes and edges in red
     nx.draw_networkx_nodes(
-        G, pos, nodelist=critical_nodes, node_color="red", node_size=50, ax=ax
+        G, pos, nodelist=nodes_inds, node_color="red", node_size=50, ax=ax
     )
     nx.draw_networkx_edges(G, pos, edgelist=critical_edges, edge_color="red", ax=ax)
 
@@ -120,6 +122,7 @@ def get_induced_gradient_vector_field(G):
 
 
 def visualize_induced_vector_field(G, env, critical_nodes, critical_edges, V):
+    nodes_inds = [c[0] for c in critical_nodes]
     # Get node positions from env._state_to_grid
     pos = {state: env._state_to_grid[state] for state in G.nodes}
 
@@ -131,7 +134,7 @@ def visualize_induced_vector_field(G, env, critical_nodes, critical_edges, V):
 
     # Highlight critical nodes and edges in red
     nx.draw_networkx_nodes(
-        G, pos, nodelist=critical_nodes, node_color="red", node_size=30, ax=ax
+        G, pos, nodelist=nodes_inds, node_color="red", node_size=30, ax=ax
     )
     nx.draw_networkx_edges(G, pos, edgelist=critical_edges, edge_color="red", ax=ax)
 
@@ -157,3 +160,58 @@ def visualize_induced_vector_field(G, env, critical_nodes, critical_edges, V):
 
     # Show the plot
     plt.show()
+
+
+# TODO: function that gets all maximal V-paths. -- start from critical nodes,
+# follow reverse gradient until you hit a critical edge or a leaf node.
+# Implement via depth-first search.
+
+# TODO: visualize as Hasse diagram (not sure if useful enough to be worth the effort)
+
+# TODO: Homology calculations. betti numbers as a fn of:
+# - level sets
+# - learning process
+# -
+
+### HOMOLOGY
+
+
+def boundary_operator_f2(G):
+    num_edges = G.number_of_edges()
+    num_vertices = G.number_of_nodes()
+    boundary_operator = np.zeros((num_edges, num_vertices))
+
+    for i, edge in enumerate(G.edges()):
+        for j, vertex in enumerate(G.nodes()):
+            if vertex in edge:
+                boundary_operator[i, j] = 1
+
+    return boundary_operator
+
+
+def boundary_operator_r(G):
+    num_edges = G.number_of_edges()
+    num_vertices = G.number_of_nodes()
+    boundary_operator = np.zeros((num_edges, num_vertices))
+
+    for i, edge in enumerate(G.edges()):
+        for j, vertex in enumerate(G.nodes()):
+            if vertex == edge[0]:
+                boundary_operator[i, j] = 1
+            elif vertex == edge[1]:
+                boundary_operator[i, j] = -1
+
+    return boundary_operator
+
+
+def betti_numbers(G):
+    D = boundary_operator_r(G)
+    rank = np.linalg.matrix_rank(D)
+    b_0 = D.shape[1] - rank
+    b_1 = D.shape[0] - rank
+    return b_0, b_1
+
+
+# TODO: homological sequences
+# TODO: homological persistence
+# TODO: level subcomplexes.
