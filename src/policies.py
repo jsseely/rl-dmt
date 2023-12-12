@@ -124,9 +124,13 @@ class QLearningAgent:
         self.env = env
         self.gamma = gamma
         self.alpha = alpha
+        self.init_epsilon = epsilon
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
-        self.q_table = np.zeros((self.env.state_space.n, self.env.action_space.n))
+        # self.q_table = np.zeros((self.env.state_space.n, self.env.action_space.n))
+        self.q_table = 0.001 * np.random.randn(
+            self.env.state_space.n, self.env.action_space.n
+        )
         self.reward_history = []
 
     def select_action(self, state):
@@ -155,6 +159,28 @@ class QLearningAgent:
                 total_reward += reward
             self.reward_history.append(total_reward)
             self.epsilon *= self.epsilon_decay
+
+    def train_with_summary(self, episodes, max_steps_per_episode):
+        from dmt import summary_morse_analysis
+        from copy import deepcopy
+
+        self.summary = {}
+        for episode in range(episodes):
+            state = self.env.reset()
+            total_reward = 0
+            for step in range(max_steps_per_episode):
+                action = self.select_action(state)
+                next_state, reward, done, _, _ = self.env.step(action)
+                self.update_q_table(state, action, reward, next_state)
+                state = next_state
+                if done:
+                    break
+                total_reward += reward
+            self.reward_history.append(total_reward)
+            self.epsilon *= self.epsilon_decay
+            self.summary[episode] = summary_morse_analysis(
+                self.env, deepcopy(self.q_table)
+            )
 
     def compute_optimal_q_function(self, threshold=0.01, max_iterations=1000):
         new_q_table = np.copy(self.q_table)
@@ -188,7 +214,7 @@ class QLearningAgent:
         plt.show()
 
     def plot_epsilon(self, episodes):
-        epsilons = self.epsilon * np.power(self.epsilon_decay, np.arange(episodes))
+        epsilons = self.init_epsilon * np.power(self.epsilon_decay, np.arange(episodes))
         plt.plot(epsilons)
         plt.title("Epsilon Decay Over Episodes")
         plt.xlabel("Episode")
