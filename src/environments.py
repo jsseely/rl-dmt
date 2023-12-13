@@ -34,18 +34,7 @@ class LineEnv(gym.Env):
         return self._agent_location, reward, done, False, {}
 
     def render(self):
-        """A simple function to print the state of the environment, given the agent's location."""
-        print("-" * self.state_space.n)
-        for i in range(self.state_space.n):
-            if i == self._agent_location:
-                print("A", end="")
-            elif i in self.terminal_states:
-                print("T", end="")
-            else:
-                # print unicode for light box
-                print("\u25A1", end="")
-                # print(" ", end="")
-        print("\n" + "-" * self.state_space.n)
+        pass
 
 
 class GridEnv(gym.Env):
@@ -97,20 +86,7 @@ class GridEnv(gym.Env):
         return self._agent_location, reward, done, False, {}
 
     def render(self):
-        """A simple function to print the state of the environment, given the agent's location."""
-        grid = ""
-        for i in range(4):
-            row = ""
-            for j in range(4):
-                if (j, i) == self._state_to_grid[self._agent_location]:
-                    row += "A"
-                elif (j, i) in self.terminal_grids:
-                    row += "T"
-                else:
-                    # print unicode for light box
-                    row += "\u25A1"
-            grid = row + "\n" + grid
-        print(grid)
+        pass
 
 
 class MazeEnv(gym.Env):
@@ -224,19 +200,4 @@ class MazeEnv(gym.Env):
         return self._agent_state, reward, done, False, {}
 
     def render(self):
-        """A simple function to print the state of the environment, given the agent's location."""
-        grid = ""
-        for i in range(8):
-            row = ""
-            for j in range(8):
-                if (j, i) == self._agent_location:
-                    row += "A"
-                elif (j, i) in self.terminal_grids:
-                    row += "T"
-                elif (j, i) in self._state_to_grid.values():
-                    # print unicode for light box
-                    row += "\u25A1"
-                else:
-                    row += " "
-            grid = row + "\n" + grid
-        print(grid)
+        pass
