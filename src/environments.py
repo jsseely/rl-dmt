@@ -1,3 +1,5 @@
+import random
+
 import gymnasium as gym
 import numpy as np
 
@@ -201,3 +203,93 @@ class MazeEnv(gym.Env):
 
     def render(self):
         pass
+
+
+from mazelib import Maze
+from mazelib.generate.Prims import Prims
+from mazelib.generate.AldousBroder import AldousBroder
+from mazelib.generate.Kruskal import Kruskal
+
+
+class ProcMaze(MazeEnv):
+    def __init__(self, size=20, num_loops=None, seed=None):
+        super().__init__()
+        self.seed = seed
+
+        m = Maze(self.seed)
+        m.generator = AldousBroder(size, size)
+        m.generate()
+        self.maze = np.logical_not(m.grid).astype(int)
+        self.maze[0, 1] = 2
+        self.maze[0, -2] = 3
+        self.maze[-1, 1] = 3
+        self.maze[-1, -2] = 3
+
+        if num_loops is not None:
+            self.add_loop(num_loops)
+
+        self.action_space = gym.spaces.Discrete(4)  # Actions: 0, 1, 2, 3
+        self._agent_location = None
+
+        self._state_to_grid = {}
+        for y in range(len(self.maze)):
+            for x in range(len(self.maze[0])):
+                if self.maze[y][x] != 0:
+                    self._state_to_grid[len(self._state_to_grid)] = (x, y)
+
+        self.state_space = gym.spaces.Discrete(len(self._state_to_grid))
+        self._grid_to_state = dict(
+            zip(self._state_to_grid.values(), self._state_to_grid.keys())
+        )
+
+        self.terminal_grids = []
+        self.start_grid = None
+
+        for y in range(len(self.maze)):
+            for x in range(len(self.maze[0])):
+                if self.maze[y][x] == 3:
+                    self.terminal_grids.append((x, y))
+                elif self.maze[y][x] == 2:
+                    self.start_grid = (x, y)
+
+        self.terminal_states = [
+            self._grid_to_state[grid] for grid in self.terminal_grids
+        ]
+
+        self._action_to_direction = {0: (0, 1), 1: (1, 0), 2: (0, -1), 3: (-1, 0)}
+
+    def add_loop(self, num_loops=1):
+        # Find indices of 0s that are not on the edges
+        zero_indices = np.argwhere(self.maze == 0)
+        non_edge_zero_indices = [
+            idx
+            for idx in zero_indices
+            if idx[0] != 0
+            and idx[0] != self.maze.shape[0] - 1
+            and idx[1] != 0
+            and idx[1] != self.maze.shape[1] - 1
+        ]
+
+        # Filter indices that are adjacent to exactly two 1s
+        filtered_indices = []
+        for idx in non_edge_zero_indices:
+            row, col = idx
+            adjacent_ones = 0
+            if self.maze[row - 1, col] == 1:
+                adjacent_ones += 1
+            if self.maze[row + 1, col] == 1:
+                adjacent_ones += 1
+            if self.maze[row, col - 1] == 1:
+                adjacent_ones += 1
+            if self.maze[row, col + 1] == 1:
+                adjacent_ones += 1
+            if adjacent_ones == 2:
+                filtered_indices.append(idx)
+
+        random.seed(self.seed)
+        selected_indices = random.sample(
+            filtered_indices, min(num_loops, len(filtered_indices))
+        )
+
+        for idx in selected_indices:
+            self.maze[idx[0], idx[1]] = 1
