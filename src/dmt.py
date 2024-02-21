@@ -45,9 +45,7 @@ def environment_to_graph(env, optimal_q_function):
             G.add_edge(state, ns)
             key = tuple(sorted((state, ns)))
             if key in edge_values:
-                edge_values[key] = np.max(
-                    [optimal_q_function[state][a], edge_values[key]]
-                )
+                edge_values[key] = np.max([optimal_q_function[state][a], edge_values[key]])
             else:
                 edge_values[key] = optimal_q_function[state][a]
 
@@ -79,9 +77,9 @@ def classify_simplices(G):
         )  # take negative of edge value to get morse fn
 
         if exception_count == 0:
-            critical_nodes.append(node)
+            critical_nodes.append(node[0])
         elif exception_count == 1:
-            regular_nodes.append(node)
+            regular_nodes.append(node[0])
         else:
             return None, None, None, None  # Not a discrete Morse function
 
@@ -89,14 +87,12 @@ def classify_simplices(G):
     for edge in G.edges(data=True):
         edge_value = -edge[2]["edge_value"]
         faces = [edge[0], edge[1]]
-        exception_count = sum(
-            -G.nodes[face]["node_value"] >= edge_value for face in faces
-        )
+        exception_count = sum(-G.nodes[face]["node_value"] >= edge_value for face in faces)
 
         if exception_count == 0:
-            critical_edges.append(edge)
+            critical_edges.append(edge[:2])
         elif exception_count == 1:
-            regular_edges.append(edge)
+            regular_edges.append(edge[:2])
         else:
             return None, None, None, None  # Not a discrete Morse function
 
@@ -108,8 +104,6 @@ def visualize_graph(
     env,
     critical_nodes,
     critical_edges,
-    exception_nodes=None,
-    exception_edges=None,
     figax=None,
 ):
     """
@@ -125,7 +119,7 @@ def visualize_graph(
     - None
     """
     # Get node positions from env._state_to_grid
-    nodes_inds = [c[0] for c in critical_nodes]
+    nodes_inds = [c for c in critical_nodes]
 
     pos = {state: env._state_to_grid[state] for state in G.nodes}
 
@@ -136,24 +130,15 @@ def visualize_graph(
         fig, ax = figax
 
     # Draw the graph
+
+    label_offset = (0.3, 0.3)
     nx.draw(G, pos, with_labels=False, node_color="black", node_size=50, ax=ax)
+    label_pos = {k: (v[0] + label_offset[0], v[1] + label_offset[1]) for k, v in pos.items()}
+    nx.draw_networkx_labels(G, label_pos, ax=ax, font_size=8, font_color="black")
 
     # Highlight critical nodes and edges in red
-    nx.draw_networkx_nodes(
-        G, pos, nodelist=nodes_inds, node_color="red", node_size=50, ax=ax
-    )
+    nx.draw_networkx_nodes(G, pos, nodelist=nodes_inds, node_color="red", node_size=50, ax=ax)
     nx.draw_networkx_edges(G, pos, edgelist=critical_edges, edge_color="red", ax=ax)
-
-    if exception_nodes is not None:
-        excps_inds = [c[0] for c in exception_nodes]
-        # Highlight exception nodes and edges in blue
-        nx.draw_networkx_nodes(
-            G, pos, nodelist=excps_inds, node_color="blue", node_size=50, ax=ax
-        )
-    if exception_edges is not None:
-        nx.draw_networkx_edges(
-            G, pos, edgelist=exception_edges, edge_color="blue", ax=ax
-        )
 
     # Set equal aspect ratio
     ax.set_aspect("equal")
@@ -189,9 +174,7 @@ def get_induced_gradient_vector_field(G):
     return V
 
 
-def visualize_induced_vector_field(
-    G, env, critical_nodes, critical_edges, V, figax=None
-):
+def visualize_induced_vector_field(G, env, critical_nodes, critical_edges, V, figax=None):
     """
     Visualizes the induced vector field on a graph.
 
@@ -205,7 +188,7 @@ def visualize_induced_vector_field(
     Returns:
     - None
     """
-    nodes_inds = [c[0] for c in critical_nodes]
+    nodes_inds = [c for c in critical_nodes]
     # Get node positions from env._state_to_grid
     pos = {state: env._state_to_grid[state] for state in G.nodes}
 
@@ -219,9 +202,11 @@ def visualize_induced_vector_field(
     nx.draw(G, pos, with_labels=False, node_color="black", node_size=30, ax=ax)
 
     # Highlight critical nodes and edges in red
-    nx.draw_networkx_nodes(
-        G, pos, nodelist=nodes_inds, node_color="red", node_size=30, ax=ax
-    )
+    nx.draw_networkx_nodes(G, pos, nodelist=nodes_inds, node_color="red", node_size=30, ax=ax)
+    label_offset = (0.15, 0.15)
+    label_pos = {k: (v[0] + label_offset[0], v[1] + label_offset[1]) for k, v in pos.items()}
+    nx.draw_networkx_labels(G, label_pos, ax=ax, font_size=8)
+
     nx.draw_networkx_edges(G, pos, edgelist=critical_edges, edge_color="red", ax=ax)
 
     # Draw arrows for induced vector field
@@ -248,6 +233,78 @@ def visualize_induced_vector_field(
     plt.show()
 
     return fig, ax
+
+
+from collections import deque
+
+
+def get_vector_field(G, cn=None, ce=None, mode="bfs"):
+    """
+    Computes the vector field of a graph based on a given set of critical nodes and critical edges.
+
+    Parameters:
+        G (networkx.Graph): The input graph.
+        cn (list or set, optional): The set of critical nodes. Defaults to an empty set.
+        ce (list or set, optional): The set of critical edges. Defaults to an empty set.
+        mode (str, optional): The mode of traversal. Can be either 'bfs' (breadth-first search) or 'dfs' (depth-first search). Defaults to 'bfs'.
+
+    Returns:
+        tuple: A tuple containing the vector field, updated set of critical nodes, and updated set of critical edges.
+            - The vector field is represented as a list of tuples, where each tuple contains a node and its corresponding edge.
+            - The updated set of critical nodes includes the original critical nodes and any unused nodes in the graph.
+            - The updated set of critical edges includes the original critical edges and any unused edges in the graph.
+    """
+    if cn is None:
+        cn = set()
+    if ce is None:
+        ce = set()
+
+    if type(cn) == list:
+        cn = set(cn)
+    if type(ce) == list:
+        ce = set(map(tuple, map(sorted, ce)))
+
+    vectors = {"nodes": [], "edges": []}
+    visited_nodes = set()
+
+    def dfs(node):
+        visited_nodes.add(node)
+        for neighbor in G.neighbors(node):
+            edge = tuple(sorted((node, neighbor)))
+            if neighbor not in vectors["nodes"] and edge not in vectors["edges"] and neighbor not in cn and edge not in ce:
+                vectors["nodes"].append(neighbor)
+                vectors["edges"].append(edge)
+                dfs(neighbor)
+
+    def bfs(start_node):
+        queue = deque([start_node])
+        while queue:
+            node = queue.popleft()
+            if node not in visited_nodes:
+                visited_nodes.add(node)
+                for neighbor in G.neighbors(node):
+                    edge = tuple(sorted((node, neighbor)))
+                    if neighbor not in vectors["nodes"] and edge not in vectors["edges"] and neighbor not in cn and edge not in ce:
+                        vectors["nodes"].append(neighbor)
+                        vectors["edges"].append(edge)
+                        queue.append(neighbor)
+
+    for critical_node in cn:
+        if mode == "bfs":
+            bfs(critical_node)
+        elif mode == "dfs":
+            dfs(critical_node)
+        else:
+            raise ValueError("Invalid mode. Please choose either 'bfs' or 'dfs'.")
+
+    v = [(vectors["nodes"][i], vectors["edges"][i]) for i in range(len(vectors["nodes"]))]
+
+    unused_nodes = set(G.nodes) - set(cn) - set(vectors["nodes"])
+    unused_edges = set(map(tuple, map(sorted, G.edges))) - set(ce) - set(map(tuple, map(sorted, vectors["edges"])))
+
+    cn = list(cn.union(unused_nodes))
+    ce = list(ce.union(unused_edges))
+    return v, cn, ce
 
 
 # TODO: function that gets all maximal V-paths. -- start from critical nodes,
@@ -376,9 +433,7 @@ def summary_morse_analysis(env, q_function):
         V = get_induced_gradient_vector_field(G)
         m0 = len(critical_nodes)
         m1 = len(critical_edges)
-        critical_values = [-v[-1]["node_value"] for v in critical_nodes] + [
-            -e[-1]["edge_value"] for e in critical_edges
-        ]
+        critical_values = [-G.nodes[v]["node_value"] for v in critical_nodes] + [-G.edges[e]["edge_value"] for e in critical_edges]
         critical_values = sorted(set(critical_values))
     else:
         V, m0, m1, critical_values = None, None, None, None
